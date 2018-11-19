@@ -44,47 +44,47 @@ public class RM3 extends AbstractQLSearcher {
 
             int top = 1000;
             double mu = 1000;
+            int numfbterms = 100;
+            double alpha = 0.2;
+            
+            double[] p10 = new double[queries.size()];
+            double[] ap = new double[queries.size()];
+            int ix = 0;
+            for (String qid : queries.keySet()) {
 
-            for (int inc = 100; inc <= 5000; inc *= 2 ) {
-                double[] p10 = new double[queries.size()];
-                double[] ap = new double[queries.size()];
-
-                int ix = 0;
-                for (String qid : queries.keySet()) {
-
-                    String query = queries.get(qid);
-                    List<String> terms = LuceneUtils.tokenize(query, analyzer);
-                    String[] termsarray = new String[terms.size()];
-                    for (int k = 0; k < termsarray.length; k++) {
-                        termsarray[k] = terms.get(k);
-                    }
-
-                    //List<SearchResult> results = searcher.search( field_search, terms, mu, top );
-                    Map<String, Double> rm1 = searcher.estimateQueryModelRM1(field_search, terms, mu, mu, top, inc);
-                    //Map<String, Double> termWeights = searcher.estimateQueryModelRM3( terms, rm1, 0.5 );
-                    List<SearchResult> results = searcher.search(field_search, rm1, mu, top);
-                    SearchResult.dumpDocno(searcher.index, field_docno, results);
-
-                    p10[ix] = EvalUtils.precision(results, qrels.get(qid), 10);
-                    ap[ix] = EvalUtils.avgPrec(results, qrels.get(qid), top);
-
-                    /*System.out.printf(
-                            "%-10s%8.3f%8.3f\n",
-                            qid,
-                            p10[ix],
-                            ap[ix]
-                    );*/
-                    ix++;
+                String query = queries.get(qid);
+                List<String> terms = LuceneUtils.tokenize(query, analyzer);
+                String[] termsarray = new String[terms.size()];
+                for (int k = 0; k < termsarray.length; k++) {
+                    termsarray[k] = terms.get(k);
                 }
-                System.out.printf(
-                        "%-10s%-25s%10.3f%10.3f%15d\n",
-                        "QL",
-                        "QL",
-                        StatUtils.mean( p10 ),
-                        StatUtils.mean( ap ),
-                        inc
-                );
+
+                //List<SearchResult> results = searcher.search( field_search, terms, mu, top );
+                Map<String, Double> rm1 = searcher.estimateQueryModelRM1(field_search, terms, mu, mu, top, numfbterms);
+                Map<String, Double> termWeights = searcher.estimateQueryModelRM3( terms, rm1, alpha );
+                List<SearchResult> results = searcher.search(field_search, termWeights, mu, top);
+                SearchResult.dumpDocno(searcher.index, field_docno, results);
+
+                p10[ix] = EvalUtils.precision(results, qrels.get(qid), 10);
+                ap[ix] = EvalUtils.avgPrec(results, qrels.get(qid), top);
+
+                /*System.out.printf(
+                        "%-10s%8.3f%8.3f\n",
+                        qid,
+                        p10[ix],
+                        ap[ix]
+                );*/
+                ix++;
             }
+            System.out.printf(
+                    "%-10s%-25s%10.3f%10.3f%10.3f\n",
+                    "QL",
+                    "QL",
+                    StatUtils.mean( p10 ),
+                    StatUtils.mean( ap ),
+                    alpha
+            );
+
 
 
             searcher.close();
